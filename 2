@@ -1,0 +1,137 @@
+import React, { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import axios from "axios";
+
+const DealAnalyzer = () => {
+  const [address, setAddress] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState(0);
+  const [arv, setArv] = useState(0);
+  const [repairCosts, setRepairCosts] = useState(0);
+  const [holdingCosts, setHoldingCosts] = useState(0);
+  const [profitMargin, setProfitMargin] = useState(20);
+  const [offer, setOffer] = useState(null);
+  const [rentalEstimate, setRentalEstimate] = useState(null);
+  const [safetyScore, setSafetyScore] = useState(null);
+  const [comps, setComps] = useState([]);
+  const [dealType, setDealType] = useState("wholesale");
+  const [offerTemplate, setOfferTemplate] = useState("");
+
+  const fetchPropertyData = async () => {
+    try {
+      const response = await axios.get(`/api/property-data?address=${encodeURIComponent(address)}`);
+      setArv(response.data.arv);
+      setRentalEstimate(response.data.rent);
+      setSafetyScore(response.data.safetyScore);
+      setComps(response.data.comps);
+    } catch (error) {
+      console.error("Error fetching property data", error);
+    }
+  };
+
+  const calculateOffer = () => {
+    let finalOffer = 0;
+    if (dealType === "wholesale") {
+      finalOffer = arv * 0.75 - repairCosts - holdingCosts;
+    } else if (dealType === "creative finance") {
+      finalOffer = purchasePrice; // Adjust for financing terms
+    } else if (dealType === "novation") {
+      finalOffer = arv - repairCosts - holdingCosts;
+    }
+    setOffer(finalOffer.toFixed(2));
+    generateOfferTemplate(finalOffer.toFixed(2));
+  };
+
+  const generateOfferTemplate = (finalOffer) => {
+    let template = "";
+    if (dealType === "wholesale") {
+      template = `Hello,
+
+I am interested in assigning the contract for the property at ${address}.
+Based on my analysis, I would like to present an offer of $${finalOffer}.
+This offer accounts for necessary repairs, holding costs, and a fair return.
+
+Please let me know if this is something you'd consider.
+
+Best regards,`;
+    } else if (dealType === "creative finance") {
+      template = `Hello,
+
+I am interested in purchasing the property at ${address} using creative financing.
+I propose the following terms:
+- Down Payment: $[Insert amount]
+- Monthly Payment: $[Insert amount]
+- Interest Rate: [Insert rate]%
+- Loan Term: [Insert term] years
+- Balloon Payment: [Yes/No]
+
+Please let me know if this is something you'd consider.
+
+Best regards,`;
+    } else if (dealType === "novation") {
+      template = `Hello,
+
+I am interested in partnering on a novation agreement for the property at ${address}.
+Here’s my proposal:
+- ARV: $${arv}
+- Repair Costs: $${repairCosts}
+- Projected Listing Price: $[Insert price]
+- Profit Split: [Insert %]
+
+Let me know if this sounds like a fit.
+
+Best regards,`;
+    }
+    setOfferTemplate(template);
+  };
+
+  return (
+    <div className="p-6">
+      <Card>
+        <CardContent className="p-6">
+          <h2 className="text-xl font-bold mb-4">Deal Analyzer</h2>
+          <div className="space-y-4">
+            <Input
+              type="text"
+              placeholder="Property Address"
+              onChange={(e) => setAddress(e.target.value)}
+            />
+            <Button onClick={fetchPropertyData}>Fetch Property Data</Button>
+            <Input
+              type="number"
+              placeholder="Purchase Price"
+              onChange={(e) => setPurchasePrice(Number(e.target.value))}
+            />
+            <Input
+              type="number"
+              placeholder="Repair Costs"
+              onChange={(e) => setRepairCosts(Number(e.target.value))}
+            />
+            <Input
+              type="number"
+              placeholder="Holding Costs"
+              onChange={(e) => setHoldingCosts(Number(e.target.value))}
+            />
+            <select onChange={(e) => setDealType(e.target.value)}>
+              <option value="wholesale">Wholesale</option>
+              <option value="creative finance">Creative Finance</option>
+              <option value="novation">Novation</option>
+            </select>
+            <Button onClick={calculateOffer}>Generate Offer</Button>
+          </div>
+          {offer && <p className="mt-4 text-lg font-semibold">Recommended Offer: ${offer}</p>}
+          {offerTemplate && (
+            <div className="mt-4 p-4 bg-gray-100 rounded">
+              <h3 className="text-lg font-bold">Offer Template:</h3>
+              <pre className="whitespace-pre-wrap">{offerTemplate}</pre>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default DealAnalyzer;
